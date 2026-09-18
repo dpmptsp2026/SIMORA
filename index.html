@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dashboard PEP 2026 — DPMPTSP</title>
+<title>SIMORA — Sistem Monitoring Realisasi Anggaran</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -53,6 +53,7 @@
   header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid var(--line);}
   .eyebrow{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue);font-weight:700;margin:0 0 8px;}
   h1{font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(24px,3.2vw,32px);margin:0;letter-spacing:-.01em;}
+  .h1-sub{font-weight:500;color:var(--muted);font-size:0.55em;letter-spacing:0;margin-left:2px;}
   .sub{color:var(--muted);font-size:13.5px;margin-top:6px;}
   .status{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--muted);}
   .dot{width:7px;height:7px;border-radius:50%;background:var(--green);}
@@ -121,8 +122,8 @@
 ============================================================= -->
 <div id="loginScreen">
   <div class="login-card">
-    <p class="eyebrow">Monitoring · Perencanaan · Penganggaran</p>
-    <h2>Masuk ke Dashboard</h2>
+    <p class="eyebrow">Monitoring · Perencanaan · Evaluasi · Pelaporan</p>
+    <h2>Masuk ke SIMORA</h2>
     <input type="password" id="pwInput" placeholder="Kata sandi" autocomplete="off" onkeydown="if(event.key==='Enter')tryLogin()">
     <button onclick="tryLogin()">Masuk</button>
     <div id="loginError"></div>
@@ -135,9 +136,9 @@
 
   <header>
     <div>
-      <p class="eyebrow">Monitoring · Perencanaan · Penganggaran</p>
-      <h1>Realisasi Anggaran 2026</h1>
-      <p class="sub">DPMPTSP — dibaca langsung dari Google Sheets.</p>
+      <p class="eyebrow">Monitoring · Perencanaan · Evaluasi · Pelaporan</p>
+      <h1>SIMORA <span class="h1-sub">— Sistem Monitoring Realisasi Anggaran</span></h1>
+      <p class="sub">DPMPTSP — Realisasi Anggaran 2026, dibaca langsung dari Google Sheets.</p>
     </div>
     <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;">
       <div class="status">
@@ -198,7 +199,7 @@
 
   <footer>
     Sumber data: sheet <code>Rekap_Realisasi_Triwulanan</code> · Diperbarui otomatis setiap kali dibuka.<br>
-    Sistem PEP DPMPTSP 2026
+    SIMORA — Sistem Monitoring Realisasi Anggaran · DPMPTSP 2026
   </footer>
 
 </div>
@@ -219,10 +220,13 @@
 ============================================================ */
 const SHEET_ID = '1McUk8DqKDjpdYN8EDrb2ODAz8R3d7jxYeEcxg1J-fvA';
 const SHEET_NAME = 'Rekap_Realisasi_Triwulanan';
-const RANGE = 'A4:J30';
+// Sengaja dilebarkan sampai Z: kolom di sheet bisa bertambah (mis. "Sisa
+// Anggaran" yang dulu belum ada), dan kolom dibaca lewat NAMA HEADER-nya,
+// bukan posisi -- jadi range yang longgar aman.
+const RANGE = 'A4:Z30';
 const PASSWORD_HASH = '1baeb6062b52510345d478e8f0f937b851f697df047ca890e11fa033e0d905df'; // "dpmptsp2026"
 
-const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}&range=${RANGE}`;
+const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}&range=${RANGE}&headers=1`;
 
 // ---------------- LOGIN ----------------
 async function sha256(text){
@@ -266,6 +270,41 @@ function fmtRp(n){ if(n==null||isNaN(n)) return '—'; return 'Rp ' + Math.round
 function fmtPct(n){ if(n==null||isNaN(n)) return '—'; return (n*100).toFixed(1) + '%'; }
 function pctClass(n){ if(n<0.7) return 'red'; if(n<0.9) return 'amber'; return 'green'; }
 
+/* Cari indeks kolom berdasarkan NAMA HEADER, bukan posisi tetap.
+   Ini akar masalah bug sebelumnya: saat kolom "Sisa Anggaran" disisipkan di
+   sheet, indeks 9 yang dulu "% Realisasi" berubah jadi Sisa Anggaran, dan
+   % Capaian jadi tampil 266.984.947.500%. Dengan pencocokan nama, kolom boleh
+   ditambah/dipindah tanpa merusak dashboard. */
+function buildColMap(cols){
+  const norm = s => String(s||'').toUpperCase().replace(/[^A-Z0-9%]/g,'');
+  const map = {};
+  cols.forEach((c, i) => {
+    const n = norm(c && (c.label || c.id));
+    if (!n) return;
+
+    // Triwulan: cocokkan angka romawi di AKHIR nama kolom. Alternasi diurut
+    // dari yang terpanjang supaya "TW I" tidak salah cocok dengan "TW III".
+    const tw = n.match(/TW(IV|III|II|I)$/);
+    if (tw) {
+      const slot = { I:'tw1', II:'tw2', III:'tw3', IV:'tw4' }[tw[1]];
+      if (map[slot] == null) map[slot] = i;
+      return;
+    }
+
+    if (n.includes('%')) { if (map.pct == null) map.pct = i; return; }
+    if (n.includes('SISA')) { if (map.sisa == null) map.sisa = i; return; }
+    if (n.includes('TOTALREALISASI')) { if (map.total == null) map.total = i; return; }
+    if (n.includes('PAGU')) { if (map.pagu == null) map.pagu = i; return; }
+    // Kolom "Kode Sub Kegiatan" harus dicegat DULU -- kalau tidak, ia ikut
+    // cocok dengan pola "SUBKEGIATAN" dan kolom Nama jadi berisi kode.
+    if (n.includes('KODE')) { if (map.kode == null) map.kode = i; return; }
+    if (n.includes('NAMAKEGIATAN') || n.includes('SUBKEGIATAN')) {
+      if (map.nama == null) map.nama = i;
+    }
+  });
+  return map;
+}
+
 async function loadData(){
   document.getElementById('statusText').textContent = 'Memuat data…';
   document.getElementById('statusDot').className = 'dot';
@@ -276,17 +315,33 @@ async function loadData(){
     const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}')+1));
     if (!json.table || !json.table.rows) throw new Error('Format data tidak dikenali');
 
+    const col = buildColMap(json.table.cols || []);
+    const missing = ['nama','pagu','total','pct'].filter(k => col[k] == null);
+    if (missing.length) {
+      throw new Error('Kolom tidak ditemukan di sheet: ' + missing.join(', ') +
+        '. Pastikan header di baris 4 sheet Rekap_Realisasi_Triwulanan masih lengkap.');
+    }
+
     const rows = json.table.rows.map(r => r.c.map(c => c ? c.v : null));
-    const totalRow = rows[rows.length - 1];
-    const dataRows = rows.slice(0, rows.length - 1);
+    const num = (r, key) => col[key] == null ? 0 : (Number(r[col[key]]) || 0);
+
+    // Baris TOTAL dikenali dari isinya, bukan diasumsikan baris terakhir.
+    const isTotalRow = r => String(r[col.nama] || '').trim().toUpperCase() === 'TOTAL';
+    const totalRow = rows.find(isTotalRow) || rows[rows.length - 1];
+    const dataRows = rows.filter(r => !isTotalRow(r) && r[col.nama]);
 
     currentRows = dataRows.map(r => ({
-      nama: r[2] || '(tanpa nama)', pagu: Number(r[3])||0,
-      tw1: Number(r[4])||0, tw2: Number(r[5])||0, tw3: Number(r[6])||0, tw4: Number(r[7])||0,
-      total: Number(r[8])||0, pct: Number(r[9])||0,
+      nama: r[col.nama] || '(tanpa nama)',
+      pagu: num(r,'pagu'),
+      tw1: num(r,'tw1'), tw2: num(r,'tw2'), tw3: num(r,'tw3'), tw4: num(r,'tw4'),
+      total: num(r,'total'),
+      pct: num(r,'pct'),
     }));
 
-    const totalPagu = Number(totalRow[3])||0, totalReal = Number(totalRow[8])||0, totalPct = Number(totalRow[9])||0;
+    const totalPagu = num(totalRow,'pagu'), totalReal = num(totalRow,'total');
+    // % keseluruhan dihitung ulang dari Pagu & Realisasi, tidak diambil mentah
+    // dari sheet -- supaya tetap benar walau sel % di sheet bermasalah.
+    const totalPct = totalPagu > 0 ? totalReal / totalPagu : 0;
 
     renderFlow(totalPagu, totalReal);
     renderKpis(totalPct, currentRows);
