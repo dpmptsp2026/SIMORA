@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard PEP 2026 — DPMPTSP</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@600;700;800&family=Public+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"
+  onerror="this.onerror=null;var s=document.createElement('script');s.src='https://cdn.jsdelivr.net/npm/chart.js@4.4.4/dist/chart.umd.min.js';document.head.appendChild(s);"></script>
+<style>
+  :root{
+    --bg:#0D1420; --panel:#141C2B; --line:#233047; --text:#EAEDF3; --muted:#8893A8;
+    --blue:#4E8FD8; --green:#4FBE8C; --amber:#DDA53B; --red:#DC6A6A; --radius:12px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:'Public Sans',system-ui,sans-serif;
+    font-feature-settings:"tnum" 1,"lnum" 1;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* ---------- Login gate ---------- */
+  #loginScreen{
+    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
+    background:var(--bg); z-index:100;
+  }
+  .login-card{
+    background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
+    padding:36px 34px; width:100%; max-width:360px; text-align:center;
+  }
+  .login-card .eyebrow{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue);font-weight:700;margin:0 0 8px;}
+  .login-card h2{font-family:'Archivo',sans-serif;font-size:20px;margin:0 0 22px;}
+  .login-card input{
+    width:100%; padding:11px 14px; border-radius:8px; border:1px solid var(--line);
+    background:#0D1420; color:var(--text); font-size:14px; margin-bottom:12px; font-family:inherit;
+  }
+  .login-card input:focus{outline:none; border-color:var(--blue);}
+  .login-card button{
+    width:100%; padding:11px 14px; border-radius:8px; border:none;
+    background:var(--blue); color:#fff; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit;
+  }
+  .login-card button:hover{background:#3D7BC4;}
+  #loginError{color:var(--red); font-size:12.5px; margin-top:12px; min-height:16px;}
+  .login-note{color:var(--muted); font-size:11px; margin-top:18px; line-height:1.6;}
+
+  /* ---------- Dashboard (hidden until login) ---------- */
+  #dashboard{display:none;}
+  .wrap{max-width:1140px;margin:0 auto;padding:40px 24px 90px;}
+  header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid var(--line);}
+  .eyebrow{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue);font-weight:700;margin:0 0 8px;}
+  h1{font-family:'Archivo',sans-serif;font-weight:800;font-size:clamp(24px,3.2vw,32px);margin:0;letter-spacing:-.01em;}
+  .sub{color:var(--muted);font-size:13.5px;margin-top:6px;}
+  .status{display:flex;align-items:center;gap:9px;font-size:12.5px;color:var(--muted);}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--green);}
+  .dot.err{background:var(--red);}
+  .btn-row{display:flex;gap:8px;}
+  #refreshBtn,#logoutBtn{
+    background:transparent;border:1px solid var(--line);color:var(--text);
+    padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;
+    cursor:pointer;font-family:inherit;display:flex;align-items:center;gap:7px;
+    transition:border-color .15s, background .15s;
+  }
+  #refreshBtn:hover,#logoutBtn:hover{border-color:var(--blue);background:rgba(78,143,216,.08);}
+  #refreshBtn svg,#logoutBtn svg{width:13px;height:13px;}
+
+  .flow-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:26px 26px 24px;margin-bottom:16px;}
+  .flow-label{font-size:11.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);font-weight:700;margin-bottom:18px;}
+  .flow-bar{height:36px;border-radius:8px;overflow:hidden;display:flex;background:#0D1420;border:1px solid var(--line);}
+  .flow-seg{height:100%;transition:width 1s cubic-bezier(.16,1,.3,1);}
+  .flow-seg.realisasi{background:var(--blue);width:0%;}
+  .flow-seg.sisa{background:transparent;flex:1;}
+  .flow-legend{display:flex;gap:36px;margin-top:18px;flex-wrap:wrap;}
+  .flow-item .k{font-size:12px;color:var(--muted);margin-bottom:4px;display:flex;align-items:center;}
+  .flow-item .v{font-family:'Archivo',sans-serif;font-weight:700;font-size:20px;}
+  .flow-item.realisasi .v{color:var(--blue);}
+  .flow-item.sisa .v{color:var(--text);}
+  .flow-item .swatch{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;}
+
+  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
+  .kpi .k{font-size:12px;color:var(--muted);margin-bottom:8px;}
+  .kpi .v{font-family:'Archivo',sans-serif;font-weight:800;font-size:24px;}
+  .kpi.warn .v{color:var(--red);}
+  .kpi.good .v{color:var(--green);}
+
+  .chart-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;}
+  .card h3{font-family:'Archivo',sans-serif;font-size:12.5px;margin:0 0 16px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);}
+  .chart-box{height:230px;}
+
+  .table-card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;overflow-x:auto;}
+  table{width:100%;border-collapse:collapse;font-size:13px;min-width:720px;}
+  th{text-align:left;font-weight:600;color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.05em;padding:10px 12px;border-bottom:1px solid var(--line);cursor:pointer;user-select:none;}
+  th:hover{color:var(--blue);}
+  td{padding:11px 12px;border-bottom:1px solid rgba(35,48,71,.5);}
+  tr:last-child td{border-bottom:none;}
+  td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;}
+  .pct-pill{display:inline-block;padding:3px 10px;border-radius:999px;font-weight:700;font-size:12px;}
+  .pct-pill.red{background:rgba(220,106,106,.14);color:var(--red);}
+  .pct-pill.amber{background:rgba(221,165,59,.14);color:var(--amber);}
+  .pct-pill.green{background:rgba(79,190,140,.14);color:var(--green);}
+  .empty,.loading{text-align:center;padding:40px;color:var(--muted);font-size:13.5px;}
+  footer{text-align:center;color:var(--muted);font-size:11.5px;margin-top:36px;line-height:1.8;}
+
+  @media (max-width:820px){
+    .kpi-row{grid-template-columns:repeat(2,1fr);}
+    .chart-row{grid-template-columns:1fr;}
+  }
+</style>
+</head>
+<body>
+
+<!-- ====================== LOGIN GATE ======================
+     Ini pengaman KASUAL, bukan keamanan sungguhan -- kode ini
+     berjalan di browser dan bisa dibaca siapa pun lewat "View Source"
+     karena GitHub Pages adalah hosting statis publik.
+============================================================= -->
+<div id="loginScreen">
+  <div class="login-card">
+    <p class="eyebrow">Monitoring · Perencanaan · Penganggaran</p>
+    <h2>Masuk ke Dashboard</h2>
+    <input type="password" id="pwInput" placeholder="Kata sandi" autocomplete="off" onkeydown="if(event.key==='Enter')tryLogin()">
+    <button onclick="tryLogin()">Masuk</button>
+    <div id="loginError"></div>
+    <p class="login-note">Halaman ini di-hosting sebagai situs statis publik.<br>Kata sandi hanya penghalang kasual, bukan enkripsi data.</p>
+  </div>
+</div>
+
+<div id="dashboard">
+<div class="wrap">
+
+  <header>
+    <div>
+      <p class="eyebrow">Monitoring · Perencanaan · Penganggaran</p>
+      <h1>Realisasi Anggaran 2026</h1>
+      <p class="sub">DPMPTSP — dibaca langsung dari Google Sheets.</p>
+    </div>
+    <div style="display:flex;flex-direction:column;align-items:flex-end;gap:10px;">
+      <div class="status">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Memuat data…</span>
+      </div>
+      <div class="btn-row">
+        <button id="refreshBtn" onclick="loadData()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
+          Refresh
+        </button>
+        <button id="logoutBtn" onclick="logout()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
+          Keluar
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <div class="flow-card">
+    <div class="flow-label">Alur Anggaran — Pagu → Realisasi → Sisa</div>
+    <div class="flow-bar"><div class="flow-seg realisasi" id="flowRealisasi"></div><div class="flow-seg sisa"></div></div>
+    <div class="flow-legend">
+      <div class="flow-item"><div class="k">Total Pagu 2026</div><div class="v" id="totalPagu">—</div></div>
+      <div class="flow-item realisasi"><div class="k"><span class="swatch" style="background:var(--blue)"></span>Realisasi</div><div class="v" id="totalRealisasi">—</div></div>
+      <div class="flow-item sisa"><div class="k"><span class="swatch" style="background:var(--line)"></span>Sisa Anggaran</div><div class="v" id="totalSisa">—</div></div>
+    </div>
+  </div>
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="k">% Capaian Keseluruhan</div><div class="v" id="kpiPct">—</div></div>
+    <div class="kpi"><div class="k">Jumlah Kegiatan</div><div class="v" id="kpiCount">—</div></div>
+    <div class="kpi warn"><div class="k">Kegiatan &lt; 70% Realisasi</div><div class="v" id="kpiLow">—</div></div>
+    <div class="kpi good"><div class="k">Kegiatan ≥ 90% Realisasi</div><div class="v" id="kpiHigh">—</div></div>
+  </div>
+
+  <div class="chart-row">
+    <div class="card"><h3>Realisasi per Triwulan</h3><div class="chart-box"><canvas id="chartTw"></canvas></div></div>
+    <div class="card"><h3>Top 6 Kegiatan — % Realisasi Terendah</h3><div class="chart-box"><canvas id="chartLow"></canvas></div></div>
+  </div>
+
+  <div class="table-card">
+    <h3 style="margin-bottom:14px;">Detail per Kegiatan</h3>
+    <table id="dataTable">
+      <thead><tr>
+        <th data-key="nama">Nama Kegiatan / Sub Kegiatan</th>
+        <th class="num" data-key="pagu">Pagu</th>
+        <th class="num" data-key="tw1">TW I</th>
+        <th class="num" data-key="tw2">TW II</th>
+        <th class="num" data-key="tw3">TW III</th>
+        <th class="num" data-key="tw4">TW IV</th>
+        <th class="num" data-key="total">Total Realisasi</th>
+        <th class="num" data-key="pct">% Realisasi</th>
+      </tr></thead>
+      <tbody id="tableBody"><tr><td colspan="8" class="loading">Memuat data…</td></tr></tbody>
+    </table>
+  </div>
+
+  <footer>
+    Sumber data: sheet <code>Rekap_Realisasi_Triwulanan</code> · Diperbarui otomatis setiap kali dibuka.<br>
+    Sistem PEP DPMPTSP 2026
+  </footer>
+
+</div>
+</div>
+
+<script>
+/* ====================== KONFIGURASI ======================
+   Ganti SHEET_ID kalau memakai spreadsheet lain. Spreadsheet
+   HARUS di-share "Anyone with the link -> Viewer" agar gviz
+   bisa diakses tanpa login Google.
+
+   PASSWORD_HASH = SHA-256 dari kata sandi login. Default di
+   bawah untuk kata sandi "dpmptsp2026" -- GANTI ini sebelum
+   dipublikasikan. Cara buat hash baru: buka Console browser,
+   jalankan:
+     crypto.subtle.digest('SHA-256', new TextEncoder().encode('kata_sandi_baru'))
+       .then(b => console.log(Array.from(new Uint8Array(b)).map(x=>x.toString(16).padStart(2,'0')).join('')))
+============================================================ */
+const SHEET_ID = '1McUk8DqKDjpdYN8EDrb2ODAz8R3d7jxYeEcxg1J-fvA';
+const SHEET_NAME = 'Rekap_Realisasi_Triwulanan';
+const RANGE = 'A4:J30';
+const PASSWORD_HASH = '1baeb6062b52510345d478e8f0f937b851f697df047ca890e11fa033e0d905df'; // "dpmptsp2026"
+
+const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}&range=${RANGE}`;
+
+// ---------------- LOGIN ----------------
+async function sha256(text){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+async function tryLogin(){
+  const val = document.getElementById('pwInput').value;
+  const hash = await sha256(val);
+  if (hash === PASSWORD_HASH){
+    sessionStorage.setItem('pep_logged_in', '1');
+    showDashboard();
+  } else {
+    document.getElementById('loginError').textContent = 'Kata sandi salah.';
+  }
+}
+
+function logout(){
+  sessionStorage.removeItem('pep_logged_in');
+  document.getElementById('dashboard').style.display = 'none';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('pwInput').value = '';
+}
+
+function showDashboard(){
+  document.getElementById('loginScreen').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+  loadData();
+}
+
+if (sessionStorage.getItem('pep_logged_in') === '1'){
+  showDashboard();
+}
+
+// ---------------- DASHBOARD DATA ----------------
+let chartTw, chartLow, currentRows = [];
+let sortKey = 'pct', sortAsc = true;
+
+function fmtRp(n){ if(n==null||isNaN(n)) return '—'; return 'Rp ' + Math.round(n).toLocaleString('id-ID'); }
+function fmtPct(n){ if(n==null||isNaN(n)) return '—'; return (n*100).toFixed(1) + '%'; }
+function pctClass(n){ if(n<0.7) return 'red'; if(n<0.9) return 'amber'; return 'green'; }
+
+async function loadData(){
+  document.getElementById('statusText').textContent = 'Memuat data…';
+  document.getElementById('statusDot').className = 'dot';
+  try{
+    const res = await fetch(GVIZ_URL);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}')+1));
+    if (!json.table || !json.table.rows) throw new Error('Format data tidak dikenali');
+
+    const rows = json.table.rows.map(r => r.c.map(c => c ? c.v : null));
+    const totalRow = rows[rows.length - 1];
+    const dataRows = rows.slice(0, rows.length - 1);
+
+    currentRows = dataRows.map(r => ({
+      nama: r[2] || '(tanpa nama)', pagu: Number(r[3])||0,
+      tw1: Number(r[4])||0, tw2: Number(r[5])||0, tw3: Number(r[6])||0, tw4: Number(r[7])||0,
+      total: Number(r[8])||0, pct: Number(r[9])||0,
+    }));
+
+    const totalPagu = Number(totalRow[3])||0, totalReal = Number(totalRow[8])||0, totalPct = Number(totalRow[9])||0;
+
+    renderFlow(totalPagu, totalReal);
+    renderKpis(totalPct, currentRows);
+    renderTwChart(currentRows);
+    renderLowChart(currentRows);
+    renderTable();
+
+    document.getElementById('statusText').textContent = 'Terhubung · diperbarui ' + new Date().toLocaleTimeString('id-ID');
+  }catch(err){
+    document.getElementById('statusDot').className = 'dot err';
+    document.getElementById('statusText').textContent = 'Gagal memuat data';
+    document.getElementById('tableBody').innerHTML =
+      `<tr><td colspan="8" class="empty">Tidak bisa mengambil data.<br>
+       Pastikan spreadsheet di-share "Anyone with the link – Viewer".<br>
+       <span style="color:var(--muted);font-size:12px">${err.message}</span></td></tr>`;
+    console.error(err);
+  }
+}
+
+function renderFlow(pagu, realisasi){
+  document.getElementById('totalPagu').textContent = fmtRp(pagu);
+  document.getElementById('totalRealisasi').textContent = fmtRp(realisasi);
+  document.getElementById('totalSisa').textContent = fmtRp(pagu - realisasi);
+  const pct = pagu > 0 ? Math.min(100, (realisasi/pagu)*100) : 0;
+  requestAnimationFrame(() => { document.getElementById('flowRealisasi').style.width = pct + '%'; });
+}
+
+function renderKpis(totalPct, rows){
+  document.getElementById('kpiPct').textContent = fmtPct(totalPct);
+  document.getElementById('kpiCount').textContent = rows.length;
+  document.getElementById('kpiLow').textContent = rows.filter(r => r.pct < 0.7).length;
+  document.getElementById('kpiHigh').textContent = rows.filter(r => r.pct >= 0.9).length;
+}
+
+function renderTwChart(rows){
+  if (typeof Chart === 'undefined') return;
+  const totals = [0,0,0,0];
+  rows.forEach(r => { totals[0]+=r.tw1; totals[1]+=r.tw2; totals[2]+=r.tw3; totals[3]+=r.tw4; });
+  if (chartTw) chartTw.destroy();
+  chartTw = new Chart(document.getElementById('chartTw'), {
+    type: 'bar',
+    data: { labels: ['TW I','TW II','TW III','TW IV'], datasets: [{ data: totals, backgroundColor: '#4E8FD8', borderRadius: 5, maxBarThickness: 52 }] },
+    options: { plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>fmtRp(c.raw)}}},
+      scales:{ y:{ticks:{color:'#8893A8', callback:v=>(v/1e6).toFixed(0)+'jt'}, grid:{color:'#1B2536'}}, x:{ticks:{color:'#8893A8'}, grid:{display:false}} } }
+  });
+}
+
+function renderLowChart(rows){
+  if (typeof Chart === 'undefined') return;
+  const sorted = [...rows].sort((a,b) => a.pct - b.pct).slice(0,6);
+  if (chartLow) chartLow.destroy();
+  chartLow = new Chart(document.getElementById('chartLow'), {
+    type: 'bar',
+    data: { labels: sorted.map(r => r.nama.length>26 ? r.nama.slice(0,24)+'…' : r.nama),
+      datasets: [{ data: sorted.map(r=>r.pct*100), backgroundColor: sorted.map(r=>r.pct<0.7?'#DC6A6A':r.pct<0.9?'#DDA53B':'#4FBE8C'), borderRadius:5 }] },
+    options: { indexAxis:'y', plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>c.raw.toFixed(1)+'%'}}},
+      scales:{ x:{max:100, ticks:{color:'#8893A8', callback:v=>v+'%'}, grid:{color:'#1B2536'}}, y:{ticks:{color:'#8893A8', font:{size:11}}, grid:{display:false}} } }
+  });
+}
+
+function renderTable(){
+  const rows = [...currentRows].sort((a,b) => { const v = a[sortKey]>b[sortKey]?1:a[sortKey]<b[sortKey]?-1:0; return sortAsc?v:-v; });
+  const body = document.getElementById('tableBody');
+  if (rows.length === 0){ body.innerHTML = '<tr><td colspan="8" class="empty">Belum ada data kegiatan.</td></tr>'; return; }
+  body.innerHTML = rows.map(r => `
+    <tr>
+      <td>${r.nama}</td>
+      <td class="num">${fmtRp(r.pagu)}</td>
+      <td class="num">${fmtRp(r.tw1)}</td>
+      <td class="num">${fmtRp(r.tw2)}</td>
+      <td class="num">${fmtRp(r.tw3)}</td>
+      <td class="num">${fmtRp(r.tw4)}</td>
+      <td class="num">${fmtRp(r.total)}</td>
+      <td class="num"><span class="pct-pill ${pctClass(r.pct)}">${fmtPct(r.pct)}</span></td>
+    </tr>`).join('');
+}
+
+document.querySelectorAll('th[data-key]').forEach(th => {
+  th.addEventListener('click', () => {
+    const key = th.dataset.key;
+    if (sortKey === key) sortAsc = !sortAsc; else { sortKey = key; sortAsc = true; }
+    renderTable();
+  });
+});
+</script>
+</body>
+</html>
