@@ -25,8 +25,8 @@
 
   /* ---------- Login gate ---------- */
   #loginScreen{
-    position:fixed; inset:0; display:flex; align-items:center; justify-content:center;
-    background:var(--bg); z-index:100;
+    position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(4,7,13,.72); z-index:100;
   }
   .login-card{
     background:var(--panel); border:1px solid var(--line); border-radius:var(--radius);
@@ -43,12 +43,16 @@
     width:100%; padding:11px 14px; border-radius:8px; border:none;
     background:var(--blue); color:#fff; font-weight:700; font-size:14px; cursor:pointer; font-family:inherit;
   }
+  .login-card button.ghost{
+    background:transparent; border:1px solid var(--line); color:var(--muted); margin-top:8px;
+  }
+  .login-card button.ghost:hover{color:var(--text); border-color:var(--blue);}
   .login-card button:hover{background:#3D7BC4;}
   #loginError{color:var(--red); font-size:12.5px; margin-top:12px; min-height:16px;}
   .login-note{color:var(--muted); font-size:11px; margin-top:18px; line-height:1.6;}
 
   /* ---------- Dashboard (hidden until login) ---------- */
-  #dashboard{display:none;}
+  #dashboard{display:block;}
   .wrap{max-width:1140px;margin:0 auto;padding:40px 24px 90px;}
   header{display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px;margin-bottom:32px;padding-bottom:24px;border-bottom:1px solid var(--line);}
   .eyebrow{font-size:11.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--blue);font-weight:700;margin:0 0 8px;}
@@ -81,12 +85,44 @@
   .flow-item.sisa .v{color:var(--text);}
   .flow-item .swatch{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;}
 
-  .kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:16px;}
+  .kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:14px;margin-bottom:16px;}
   .kpi{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:18px 20px;}
   .kpi .k{font-size:12px;color:var(--muted);margin-bottom:8px;}
   .kpi .v{font-family:'Archivo',sans-serif;font-weight:800;font-size:24px;}
   .kpi.warn .v{color:var(--red);}
+  .kpi.mid .v{color:var(--amber);}
   .kpi.good .v{color:var(--green);}
+
+  .hidden{display:none;}
+  .hint{font-size:11.5px;color:var(--muted);margin:-6px 0 14px;}
+  .tab-row{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--line);}
+  .tab-btn{background:transparent;border:none;color:var(--muted);font-family:'Archivo',sans-serif;
+    font-size:13px;font-weight:700;padding:8px 4px 12px;cursor:pointer;
+    border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .12s,border-color .12s;}
+  .tab-btn:hover{color:var(--text);}
+  .tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);}
+  #rekapTable tbody tr{cursor:default;}
+  #rekapTable td,#rekapTable th{font-size:12px;}
+  #tableBody tr{cursor:pointer;transition:background .12s;}
+  #tableBody tr:hover{background:rgba(78,143,216,.06);}
+
+  .modal-overlay{position:fixed;inset:0;background:rgba(4,7,13,.6);display:none;
+    align-items:flex-start;justify-content:center;padding:56px 16px;z-index:60;overflow-y:auto;}
+  .modal-overlay.open{display:flex;}
+  .modal{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);
+    max-width:760px;width:100%;padding:22px 24px 24px;}
+  .modal-head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:4px;}
+  .modal-head h3{font-family:'Archivo',sans-serif;font-size:15px;margin:0;font-weight:700;}
+  .modal-close{background:transparent;border:1px solid var(--line);color:var(--muted);
+    width:28px;height:28px;border-radius:7px;cursor:pointer;flex:none;font-size:15px;line-height:1;}
+  .modal-close:hover{color:var(--text);border-color:var(--blue);}
+  .modal-sub{font-size:12px;color:var(--muted);margin:2px 0 16px;}
+  .modal-body{max-height:60vh;overflow-y:auto;}
+  .modal table{min-width:0;font-size:12.5px;}
+  .modal th{position:sticky;top:0;background:var(--panel);cursor:default;}
+  .modal-foot{display:flex;justify-content:space-between;align-items:center;margin-top:14px;
+    padding-top:14px;border-top:1px solid var(--line);font-size:13px;}
+  .modal-foot .v{font-family:'Archivo',sans-serif;font-weight:700;font-size:15px;}
 
   .chart-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px;}
   .card{background:var(--panel);border:1px solid var(--line);border-radius:var(--radius);padding:20px;}
@@ -115,19 +151,23 @@
 </head>
 <body>
 
-<!-- ====================== LOGIN GATE ======================
-     Ini pengaman KASUAL, bukan keamanan sungguhan -- kode ini
-     berjalan di browser dan bisa dibaca siapa pun lewat "View Source"
-     karena GitHub Pages adalah hosting statis publik.
-============================================================= -->
+<!-- ============ GERBANG UPDATE DATA (bukan gerbang masuk) ============
+     Dashboard dibuka bebas tanpa login. Kata sandi HANYA diminta saat
+     akan memperbarui data XLS, yaitu untuk membuka spreadsheet sumber.
+     Ini pengaman KASUAL, bukan keamanan sungguhan -- kode ini berjalan
+     di browser dan bisa dibaca siapa pun lewat "View Source" karena
+     GitHub Pages adalah hosting statis publik. Pengaman sebenarnya tetap
+     ada di izin akses spreadsheet itu sendiri.
+=================================================================== -->
 <div id="loginScreen">
   <div class="login-card">
-    <p class="eyebrow">Monitoring · Perencanaan · Evaluasi · Pelaporan</p>
-    <h2>Masuk ke SIMORA</h2>
+    <p class="eyebrow">Akses Pengelola</p>
+    <h2>Update Data XLS</h2>
     <input type="password" id="pwInput" placeholder="Kata sandi" autocomplete="off" onkeydown="if(event.key==='Enter')tryLogin()">
-    <button onclick="tryLogin()">Masuk</button>
+    <button onclick="tryLogin()">Lanjut</button>
+    <button class="ghost" onclick="closeUpdateGate()">Batal</button>
     <div id="loginError"></div>
-    <p class="login-note">Halaman ini di-hosting sebagai situs statis publik.<br>Kata sandi hanya penghalang kasual, bukan enkripsi data.</p>
+    <p class="login-note">Setelah lanjut, spreadsheet sumber akan dibuka di tab baru.<br>Upload XLS dilakukan lewat menu <b>PEP Tools → Upload XLS Realisasi</b>.</p>
   </div>
 </div>
 
@@ -150,9 +190,9 @@
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 3v6h-6"/></svg>
           Refresh
         </button>
-        <button id="logoutBtn" onclick="logout()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg>
-          Keluar
+        <button id="logoutBtn" onclick="openUpdateGate()">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12"/><path d="M8 7l4-4 4 4"/><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/></svg>
+          Update Data
         </button>
       </div>
     </div>
@@ -172,6 +212,7 @@
     <div class="kpi"><div class="k">% Capaian Keseluruhan</div><div class="v" id="kpiPct">—</div></div>
     <div class="kpi"><div class="k">Jumlah Kegiatan</div><div class="v" id="kpiCount">—</div></div>
     <div class="kpi warn"><div class="k">Kegiatan &lt; 70% Realisasi</div><div class="v" id="kpiLow">—</div></div>
+    <div class="kpi mid"><div class="k">Kegiatan 70–90% Realisasi</div><div class="v" id="kpiMid">—</div></div>
     <div class="kpi good"><div class="k">Kegiatan ≥ 90% Realisasi</div><div class="v" id="kpiHigh">—</div></div>
   </div>
 
@@ -181,20 +222,72 @@
   </div>
 
   <div class="table-card">
-    <h3 style="margin-bottom:14px;">Detail per Kegiatan</h3>
-    <table id="dataTable">
-      <thead><tr>
-        <th data-key="nama">Nama Kegiatan / Sub Kegiatan</th>
-        <th class="num" data-key="pagu">Pagu</th>
-        <th class="num" data-key="tw1">TW I</th>
-        <th class="num" data-key="tw2">TW II</th>
-        <th class="num" data-key="tw3">TW III</th>
-        <th class="num" data-key="tw4">TW IV</th>
-        <th class="num" data-key="total">Total Realisasi</th>
-        <th class="num" data-key="pct">% Realisasi</th>
-      </tr></thead>
-      <tbody id="tableBody"><tr><td colspan="8" class="loading">Memuat data…</td></tr></tbody>
-    </table>
+    <div class="tab-row">
+      <button class="tab-btn active" id="tabBtnDetail" onclick="switchTab('detail')">Detail per Kegiatan</button>
+      <button class="tab-btn" id="tabBtnRekap" onclick="switchTab('rekap')">Rekap Triwulanan</button>
+    </div>
+
+    <div id="panelDetail">
+      <p class="hint">Klik salah satu baris untuk melihat rincian transaksi &amp; Tgl Bukti pencairannya.</p>
+      <table id="dataTable">
+        <thead><tr>
+          <th data-key="nama">Nama Kegiatan / Sub Kegiatan</th>
+          <th class="num" data-key="pagu">Pagu</th>
+          <th class="num" data-key="tw1">TW I</th>
+          <th class="num" data-key="tw2">TW II</th>
+          <th class="num" data-key="tw3">TW III</th>
+          <th class="num" data-key="tw4">TW IV</th>
+          <th class="num" data-key="total">Total Realisasi</th>
+          <th class="num" data-key="sisa">Sisa Anggaran</th>
+          <th class="num" data-key="pct">% Realisasi</th>
+        </tr></thead>
+        <tbody id="tableBody"><tr><td colspan="9" class="loading">Memuat data…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div id="panelRekap" class="hidden">
+      <p class="hint">Format rekap resmi per Sub Kegiatan, urut Kode Sub Kegiatan &mdash; cocok untuk dicetak/screenshot laporan.</p>
+      <table id="rekapTable">
+        <thead><tr>
+          <th class="num">No</th>
+          <th>Kode Sub Kegiatan</th>
+          <th>Nama Kegiatan / Sub Kegiatan</th>
+          <th class="num">Pagu 2026</th>
+          <th class="num">TW I</th>
+          <th class="num">TW II</th>
+          <th class="num">TW III</th>
+          <th class="num">TW IV</th>
+          <th class="num">Total Realisasi</th>
+          <th class="num">Sisa Anggaran</th>
+          <th class="num">% Realisasi</th>
+        </tr></thead>
+        <tbody id="rekapBody"><tr><td colspan="11" class="loading">Memuat data…</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="detailModal">
+    <div class="modal">
+      <div class="modal-head">
+        <div>
+          <h3 id="detailTitle">—</h3>
+          <p class="modal-sub" id="detailSub"></p>
+        </div>
+        <button class="modal-close" onclick="closeDetail()">✕</button>
+      </div>
+      <div class="modal-body">
+        <table>
+          <thead><tr>
+            <th>Tgl Bukti</th><th>No Bukti</th><th>Uraian</th><th class="num">Nilai</th>
+          </tr></thead>
+          <tbody id="detailBody"><tr><td colspan="4" class="loading">Memuat rincian…</td></tr></tbody>
+        </table>
+      </div>
+      <div class="modal-foot">
+        <span>Jumlah transaksi: <b id="detailCount">0</b></span>
+        <span>Total: <span class="v" id="detailTotal">Rp 0</span></span>
+      </div>
+    </div>
   </div>
 
   <footer>
@@ -228,6 +321,14 @@ const PASSWORD_HASH = '1baeb6062b52510345d478e8f0f937b851f697df047ca890e11fa033e
 
 const GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(SHEET_NAME)}&range=${RANGE}&headers=1`;
 
+// Sumber rincian transaksi untuk pop-up "Detail per Kegiatan".
+const FORM_SHEET = 'Form_Input_Realisasi';
+const FORM_RANGE = 'A5:J5000';
+const FORM_GVIZ_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:json&sheet=${encodeURIComponent(FORM_SHEET)}&range=${FORM_RANGE}&headers=1`;
+
+// Dibuka saat tombol "Update Data" dipakai (setelah kata sandi benar).
+const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/edit`;
+
 // ---------------- LOGIN ----------------
 async function sha256(text){
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(text));
@@ -238,35 +339,37 @@ async function tryLogin(){
   const val = document.getElementById('pwInput').value;
   const hash = await sha256(val);
   if (hash === PASSWORD_HASH){
-    sessionStorage.setItem('pep_logged_in', '1');
-    showDashboard();
+    closeUpdateGate();
+    window.open(SHEET_URL, '_blank', 'noopener');
   } else {
     document.getElementById('loginError').textContent = 'Kata sandi salah.';
   }
 }
 
-function logout(){
-  sessionStorage.removeItem('pep_logged_in');
-  document.getElementById('dashboard').style.display = 'none';
-  document.getElementById('loginScreen').style.display = 'flex';
+function openUpdateGate(){
+  document.getElementById('loginError').textContent = '';
   document.getElementById('pwInput').value = '';
+  document.getElementById('loginScreen').style.display = 'flex';
+  document.getElementById('pwInput').focus();
 }
 
-function showDashboard(){
+function closeUpdateGate(){
   document.getElementById('loginScreen').style.display = 'none';
-  document.getElementById('dashboard').style.display = 'block';
-  loadData();
+  document.getElementById('pwInput').value = '';
+  document.getElementById('loginError').textContent = '';
 }
 
-if (sessionStorage.getItem('pep_logged_in') === '1'){
-  showDashboard();
-}
+document.addEventListener('keydown', (e) => {
+  if (e.key !== 'Escape') return;
+  closeUpdateGate();
+  if (typeof closeDetail === 'function') closeDetail();
+});
 
 // ---------------- DASHBOARD DATA ----------------
 let chartTw, chartLow, currentRows = [];
 let sortKey = 'pct', sortAsc = true;
 
-function fmtRp(n){ if(n==null||isNaN(n)) return '—'; return 'Rp ' + Math.round(n).toLocaleString('id-ID'); }
+function fmtRp(n){ if(n==null||isNaN(n)) return '—'; const sign = n<0?'-':''; return sign + 'Rp ' + Math.round(Math.abs(n)).toLocaleString('id-ID'); }
 function fmtPct(n){ if(n==null||isNaN(n)) return '—'; return (n*100).toFixed(1) + '%'; }
 function pctClass(n){ if(n<0.7) return 'red'; if(n<0.9) return 'amber'; return 'green'; }
 
@@ -330,13 +433,18 @@ async function loadData(){
     const totalRow = rows.find(isTotalRow) || rows[rows.length - 1];
     const dataRows = rows.filter(r => !isTotalRow(r) && r[col.nama]);
 
-    currentRows = dataRows.map(r => ({
-      nama: r[col.nama] || '(tanpa nama)',
-      pagu: num(r,'pagu'),
-      tw1: num(r,'tw1'), tw2: num(r,'tw2'), tw3: num(r,'tw3'), tw4: num(r,'tw4'),
-      total: num(r,'total'),
-      pct: num(r,'pct'),
-    }));
+    currentRows = dataRows.map(r => {
+      const pagu = num(r,'pagu'), total = num(r,'total');
+      return {
+        kodeSK: col.kode != null ? String(r[col.kode] || '').trim() : '',
+        nama: r[col.nama] || '(tanpa nama)',
+        pagu,
+        tw1: num(r,'tw1'), tw2: num(r,'tw2'), tw3: num(r,'tw3'), tw4: num(r,'tw4'),
+        total,
+        sisa: pagu - total,
+        pct: num(r,'pct'),
+      };
+    });
 
     const totalPagu = num(totalRow,'pagu'), totalReal = num(totalRow,'total');
     // % keseluruhan dihitung ulang dari Pagu & Realisasi, tidak diambil mentah
@@ -354,7 +462,7 @@ async function loadData(){
     document.getElementById('statusDot').className = 'dot err';
     document.getElementById('statusText').textContent = 'Gagal memuat data';
     document.getElementById('tableBody').innerHTML =
-      `<tr><td colspan="8" class="empty">Tidak bisa mengambil data.<br>
+      `<tr><td colspan="9" class="empty">Tidak bisa mengambil data.<br>
        Pastikan spreadsheet di-share "Anyone with the link – Viewer".<br>
        <span style="color:var(--muted);font-size:12px">${err.message}</span></td></tr>`;
     console.error(err);
@@ -373,6 +481,7 @@ function renderKpis(totalPct, rows){
   document.getElementById('kpiPct').textContent = fmtPct(totalPct);
   document.getElementById('kpiCount').textContent = rows.length;
   document.getElementById('kpiLow').textContent = rows.filter(r => r.pct < 0.7).length;
+  document.getElementById('kpiMid').textContent = rows.filter(r => r.pct >= 0.7 && r.pct < 0.9).length;
   document.getElementById('kpiHigh').textContent = rows.filter(r => r.pct >= 0.9).length;
 }
 
@@ -402,22 +511,171 @@ function renderLowChart(rows){
   });
 }
 
+function escapeHtml(s){
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function renderTable(){
   const rows = [...currentRows].sort((a,b) => { const v = a[sortKey]>b[sortKey]?1:a[sortKey]<b[sortKey]?-1:0; return sortAsc?v:-v; });
   const body = document.getElementById('tableBody');
-  if (rows.length === 0){ body.innerHTML = '<tr><td colspan="8" class="empty">Belum ada data kegiatan.</td></tr>'; return; }
+  if (rows.length === 0){ body.innerHTML = '<tr><td colspan="9" class="empty">Belum ada data kegiatan.</td></tr>'; return; }
   body.innerHTML = rows.map(r => `
-    <tr>
-      <td>${r.nama}</td>
+    <tr data-kode="${escapeHtml(r.kodeSK)}" data-nama="${escapeHtml(r.nama)}">
+      <td>${escapeHtml(r.nama)}</td>
       <td class="num">${fmtRp(r.pagu)}</td>
       <td class="num">${fmtRp(r.tw1)}</td>
       <td class="num">${fmtRp(r.tw2)}</td>
       <td class="num">${fmtRp(r.tw3)}</td>
       <td class="num">${fmtRp(r.tw4)}</td>
       <td class="num">${fmtRp(r.total)}</td>
+      <td class="num" style="${r.sisa < 0 ? 'color:var(--red);font-weight:700;' : ''}">${fmtRp(r.sisa)}</td>
       <td class="num"><span class="pct-pill ${pctClass(r.pct)}">${fmtPct(r.pct)}</span></td>
     </tr>`).join('');
 }
+
+function renderRekapTable(){
+  const body = document.getElementById('rekapBody');
+  const rows = [...currentRows].sort((a,b) => String(a.kodeSK).localeCompare(String(b.kodeSK), undefined, {numeric:true}));
+  if (rows.length === 0){ body.innerHTML = '<tr><td colspan="11" class="empty">Belum ada data kegiatan.</td></tr>'; return; }
+  body.innerHTML = rows.map((r,i) => `
+    <tr>
+      <td class="num">${i+1}</td>
+      <td>${escapeHtml(r.kodeSK || '—')}</td>
+      <td>${escapeHtml(r.nama)}</td>
+      <td class="num">${fmtRp(r.pagu)}</td>
+      <td class="num">${fmtRp(r.tw1)}</td>
+      <td class="num">${fmtRp(r.tw2)}</td>
+      <td class="num">${fmtRp(r.tw3)}</td>
+      <td class="num">${fmtRp(r.tw4)}</td>
+      <td class="num">${fmtRp(r.total)}</td>
+      <td class="num" style="${r.sisa < 0 ? 'color:var(--red);font-weight:700;' : ''}">${fmtRp(r.sisa)}</td>
+      <td class="num"><span class="pct-pill ${pctClass(r.pct)}">${fmtPct(r.pct)}</span></td>
+    </tr>`).join('');
+}
+
+function switchTab(tab){
+  const isDetail = tab === 'detail';
+  document.getElementById('tabBtnDetail').classList.toggle('active', isDetail);
+  document.getElementById('tabBtnRekap').classList.toggle('active', !isDetail);
+  document.getElementById('panelDetail').classList.toggle('hidden', !isDetail);
+  document.getElementById('panelRekap').classList.toggle('hidden', isDetail);
+  if (!isDetail) renderRekapTable();
+}
+
+// ---------------- DRILL-DOWN RINCIAN TRANSAKSI ----------------
+/* Versi Apps Script memanggil getKegiatanTransactions() di server. Situs
+   statis tidak punya itu, jadi rincian diambil langsung dari sheet
+   Form_Input_Realisasi lewat gviz, lalu dikelompokkan per Kode Sub Kegiatan.
+   Diambil sekali saja lalu di-cache di memori. */
+let trxByKode = null;
+let trxLoadError = null;
+
+/* gviz mengirim tanggal sebagai string "Date(2026,0,22)". Nilai terformat
+   (c.f) dipakai kalau ada karena sudah sesuai format sheet. */
+function gvizDate(cell){
+  if (!cell) return '-';
+  if (cell.f) return cell.f;
+  const m = /^Date\((\d+),(\d+),(\d+)/.exec(String(cell.v || ''));
+  if (!m) return String(cell.v || '-');
+  const d = new Date(+m[1], +m[2], +m[3]);
+  return d.toLocaleDateString('id-ID', { day:'2-digit', month:'2-digit', year:'numeric' });
+}
+
+async function loadTransactions(){
+  if (trxByKode) return trxByKode;
+  const res = await fetch(FORM_GVIZ_URL);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const text = await res.text();
+  const json = JSON.parse(text.substring(text.indexOf('{'), text.lastIndexOf('}')+1));
+  if (!json.table || !json.table.rows) throw new Error('Format data tidak dikenali');
+
+  // Cocokkan kolom lewat nama header; kalau header tidak terbaca, pakai posisi
+  // yang memang ditulis oleh writeToForm() di Code.gs (B,C,D,F,G,H).
+  const norm = s => String(s||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  const c = {};
+  (json.table.cols || []).forEach((col, i) => {
+    const n = norm(col && (col.label || ''));
+    if (!n) return;
+    if (n.includes('TGL') || n.includes('TANGGAL')) { if(c.tgl==null) c.tgl = i; }
+    else if (n.includes('KODE')) { if(c.kode==null) c.kode = i; }
+    else if (n.includes('URAIAN')) { if(c.uraian==null) c.uraian = i; }
+    else if (n.includes('NILAI') || n.includes('JUMLAH')) { if(c.nilai==null) c.nilai = i; }
+    else if (n.includes('BUKTI')) { if(c.nobukti==null) c.nobukti = i; }
+  });
+  if (c.tgl == null) c.tgl = 1;
+  if (c.kode == null) c.kode = 3;
+  if (c.uraian == null) c.uraian = 5;
+  if (c.nilai == null) c.nilai = 6;
+  if (c.nobukti == null) c.nobukti = 7;
+
+  const map = {};
+  json.table.rows.forEach(row => {
+    const cells = row.c || [];
+    const kode = String((cells[c.kode] && cells[c.kode].v) || '').trim();
+    const nilai = Number((cells[c.nilai] && cells[c.nilai].v) || 0) || 0;
+    if (!kode || !nilai) return;
+    const raw = cells[c.tgl];
+    const dm = raw && /^Date\((\d+),(\d+),(\d+)/.exec(String(raw.v || ''));
+    (map[kode] = map[kode] || []).push({
+      sort: dm ? new Date(+dm[1], +dm[2], +dm[3]).getTime() : 0,
+      tgl: gvizDate(raw),
+      nobukti: (cells[c.nobukti] && cells[c.nobukti].v) || '',
+      uraian: (cells[c.uraian] && cells[c.uraian].v) || '',
+      nilai,
+    });
+  });
+  Object.values(map).forEach(list => list.sort((a,b) => a.sort - b.sort));
+  trxByKode = map;
+  return map;
+}
+
+async function openDetail(kodeSK, nama){
+  document.getElementById('detailTitle').textContent = nama;
+  document.getElementById('detailSub').textContent = 'Rincian transaksi & tanggal pencairan (Tgl Bukti)';
+  document.getElementById('detailBody').innerHTML = '<tr><td colspan="4" class="loading">Memuat rincian…</td></tr>';
+  document.getElementById('detailCount').textContent = '0';
+  document.getElementById('detailTotal').textContent = fmtRp(0);
+  document.getElementById('detailModal').classList.add('open');
+
+  let rows = [];
+  try {
+    const map = await loadTransactions();
+    rows = (kodeSK && map[kodeSK]) || [];
+  } catch (err) {
+    trxLoadError = err;
+    document.getElementById('detailBody').innerHTML =
+      `<tr><td colspan="4" class="empty">Gagal memuat rincian transaksi.<br>
+       <span style="font-size:12px">Pastikan sheet <b>${FORM_SHEET}</b> ikut dibagikan "Anyone with the link → Viewer".<br>${escapeHtml(err.message)}</span></td></tr>`;
+    return;
+  }
+
+  const body = document.getElementById('detailBody');
+  if (rows.length === 0){
+    body.innerHTML = `<tr><td colspan="4" class="empty">Belum ada transaksi tercatat untuk kegiatan ini di ${FORM_SHEET}.</td></tr>`;
+    return;
+  }
+  body.innerHTML = rows.map(t => `
+    <tr>
+      <td>${escapeHtml(t.tgl)}</td>
+      <td>${escapeHtml(t.nobukti || '—')}</td>
+      <td>${escapeHtml(t.uraian || '—')}</td>
+      <td class="num">${fmtRp(t.nilai)}</td>
+    </tr>`).join('');
+  document.getElementById('detailCount').textContent = rows.length;
+  document.getElementById('detailTotal').textContent = fmtRp(rows.reduce((a,t) => a + t.nilai, 0));
+}
+
+function closeDetail(){
+  document.getElementById('detailModal').classList.remove('open');
+}
+
+document.getElementById('tableBody').addEventListener('click', (e) => {
+  const tr = e.target.closest('tr[data-nama]');
+  if (tr) openDetail(tr.dataset.kode, tr.dataset.nama);
+});
+document.getElementById('detailModal').addEventListener('click', (e) => {
+  if (e.target.id === 'detailModal') closeDetail();
+});
 
 document.querySelectorAll('th[data-key]').forEach(th => {
   th.addEventListener('click', () => {
@@ -426,6 +684,8 @@ document.querySelectorAll('th[data-key]').forEach(th => {
     renderTable();
   });
 });
+
+loadData();
 </script>
 </body>
 </html>
