@@ -386,7 +386,7 @@
     <div class="brand">
       <p class="eyebrow">Monitoring · Perencanaan · Evaluasi · Pelaporan</p>
       <h1>SIMORA <span class="full">Sistem Monitoring Realisasi Anggaran</span></h1>
-      <p class="sub">DPMPTSP — Realisasi Anggaran 2026, dibaca langsung dari Google Sheets.</p>
+      <p class="sub">DPMPTSP — Realisasi Anggaran 2026</p>
     </div>
     <div class="topbar-right">
       <div class="status">
@@ -485,11 +485,9 @@
     </div>
   </section>
 
-  <!-- ---------- TABEL ---------- -->
   <!-- ---------- REALISASI PER BULAN (%) ---------- -->
   <section class="card" style="margin-bottom:var(--gap);" aria-label="Realisasi per bulan">
-    <p class="sec-label">Realisasi per Bulan — % terhadap Pagu 2026</p>
-    <div class="chart-box" style="height:150px;"><canvas id="chartMonthly" aria-label="Grafik realisasi bulanan dalam persen" role="img"></canvas></div>
+    <p class="sec-label" style="margin-bottom:10px;">Realisasi per Bulan — % terhadap Pagu 2026</p>
     <div class="monthly-grid" id="monthlyGrid">
       <div class="mg-cell mg-head">Bulan</div>
       <div class="mg-cell mg-head">Realisasi</div>
@@ -498,6 +496,7 @@
     </div>
   </section>
 
+  <!-- ---------- TABEL ---------- -->
   <section class="table-card">
     <div class="tab-row" role="tablist">
       <button class="tab-btn active" id="tabBtnDetail" role="tab" aria-selected="true"
@@ -878,7 +877,6 @@ function renderLow(rows){
    langsung terlihat kontribusi tiap bulan terhadap capaian keseluruhan.
    Dimuat terpisah (bukan bagian loadData) karena butuh fetch tambahan;
    kegagalannya tidak boleh mengganggu bagian dashboard yang lain. */
-let chartMonthly;
 const BULAN_LABEL = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
 async function loadMonthlyRealisasi(){
@@ -897,33 +895,7 @@ async function loadMonthlyRealisasi(){
 function renderMonthlySection(byMonth){
   const pagu = totalPaguGlobal || 0;
   const pct = byMonth.map(v => pagu > 0 ? v / pagu : 0);
-  const maxPct = Math.max(...pct, 0.01); // skala bar relatif terhadap bulan tertinggi, bukan 100%
-
-  // ---- chart: ringkas, tanpa sumbu Y supaya tidak makan tempat ----
-  const box = document.getElementById('chartMonthly');
-  if (typeof Chart !== 'undefined' && box){
-    if (chartMonthly) chartMonthly.destroy();
-    chartMonthly = new Chart(box, {
-      type:'bar',
-      data:{ labels: BULAN_LABEL.map(b => b.slice(0,3)),
-             datasets:[{ data: pct.map(p => p*100),
-                         backgroundColor: pct.map(p => p>0 ? '#4E8FD8' : 'rgba(78,143,216,.18)'),
-                         borderRadius:4, maxBarThickness:30 }] },
-      options:{
-        responsive:true, maintainAspectRatio:false,
-        layout:{ padding:{ top:4 } },
-        plugins:{ legend:{display:false},
-          tooltip:{ backgroundColor:'#1A2435', borderColor:'#243248', borderWidth:1, padding:10,
-                    titleFont:{family:'Inter',weight:'700',size:12}, bodyFont:{family:'Inter',size:12},
-                    callbacks:{ title: items => BULAN_LABEL[items[0].dataIndex],
-                                label: c => c.raw.toFixed(1).replace('.',',')+'% dari Pagu' } } },
-        scales:{
-          y:{ display:false, beginAtZero:true },
-          x:{ ticks:{ color:'#8C99B0', font:{family:'Inter',size:10.5} }, grid:{display:false}, border:{color:'#243248'} }
-        }
-      }
-    });
-  }
+  const maxPct = Math.max(...pct, 0.01); // skala mini-bar relatif terhadap bulan tertinggi, bukan 100%
 
   // ---- grid tabel: Bulan | Realisasi (mini bar + %) | Triwulan | Total TW (pill) ----
   const grid = document.getElementById('monthlyGrid');
