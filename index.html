@@ -136,15 +136,25 @@
   .chart-box{height:270px;position:relative;}
 
   /* ---------------- REALISASI PER BULAN (%) ---------------- */
-  .monthly-grid{display:grid;grid-template-columns:1.1fr 1fr .7fr 1fr;margin-top:16px;}
-  .mg-cell{padding:9px 10px;border-bottom:1px solid var(--line-soft);font-size:13px;display:flex;align-items:center;min-width:0;}
-  .mg-head{font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
-    font-weight:700;border-bottom:1px solid var(--line);}
+  .monthly-grid{display:grid;grid-template-columns:1.05fr 1.35fr .65fr .85fr;margin-top:14px;}
+  .mg-cell{padding:6px 10px;border-bottom:1px solid var(--line-soft);font-size:12.5px;display:flex;align-items:center;min-width:0;}
+  .mg-head{font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+    font-weight:700;border-bottom:1px solid var(--line);padding-bottom:8px;}
   .mg-cell.num{justify-content:flex-end;font-variant-numeric:tabular-nums;}
-  .mg-tw{justify-content:center;font-weight:700;color:var(--blue);font-size:12px;}
-  .mg-total{justify-content:flex-end;font-weight:700;font-variant-numeric:tabular-nums;}
   .mg-band-0{background:rgba(78,143,216,.035);}
   .mg-band-1{background:rgba(255,255,255,.015);}
+  .mg-bar{display:flex;align-items:center;gap:8px;width:100%;}
+  .mg-bar-track{flex:1;height:6px;border-radius:99px;background:var(--bg);border:1px solid var(--line);overflow:hidden;min-width:0;}
+  .mg-bar-fill{height:100%;border-radius:99px;background:var(--blue);}
+  .mg-bar.zero .mg-bar-track{border-style:dashed;opacity:.55;}
+  .mg-bar-pct{font-size:12px;font-weight:600;flex:none;font-variant-numeric:tabular-nums;min-width:44px;text-align:right;}
+  .mg-bar.zero .mg-bar-pct{color:var(--muted);font-weight:500;}
+  .mg-tw-cell{justify-content:center;}
+  .mg-tw-label{font-size:11px;font-weight:700;color:var(--muted);}
+  .mg-total-pill{
+    display:inline-block;padding:3px 10px;border-radius:99px;font-weight:700;font-size:11.5px;
+    background:var(--blue-soft);color:var(--blue);font-variant-numeric:tabular-nums;
+  }
   /* Ranking list — dipakai menggantikan horizontal bar chart di layar kecil */
   .rank-list{display:none;flex-direction:column;gap:11px;}
   .rank-item{display:flex;align-items:flex-start;gap:11px;}
@@ -178,7 +188,7 @@
   .tab-btn.active{color:var(--blue);border-bottom-color:var(--blue);}
   .toolbar{display:flex;gap:10px;align-items:center;margin-bottom:12px;flex-wrap:wrap;}
   .search{
-    position:relative;flex:1;min-width:180px;
+    position:relative;flex:0 1 360px;min-width:180px;
   }
   .search svg{
     position:absolute;left:11px;top:50%;transform:translateY(-50%);
@@ -208,6 +218,7 @@
   td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap;}
   td.name{min-width:240px;}
   #tableBody tr{cursor:pointer;transition:background .12s;}
+  #tableBody tr:nth-child(even){background:rgba(255,255,255,.014);}
   #tableBody tr:hover,#tableBody tr:focus-within{background:var(--blue-soft);}
   .neg{color:var(--red);font-weight:700;}
   .badge{
@@ -340,7 +351,8 @@
     #lowChartBox{display:none;}
     .rank-list{display:flex;}
     .table-card,.card,.flow{padding:15px;}
-    .monthly-grid{grid-template-columns:1.2fr 1fr .8fr 1fr;font-size:11.5px;}
+    .monthly-grid{grid-template-columns:1.2fr 1.4fr .5fr .7fr;font-size:11.5px;}
+    .search{flex-basis:100%;}
   }
   @media (max-width:479px){           /* smartphone */
     .kpi-grid{grid-template-columns:1fr;}
@@ -359,6 +371,10 @@
     #trxTable{display:none;}
     .trx-cards.has-data{display:flex;}
     .modal-body{overflow-x:hidden;}
+    .monthly-grid{grid-template-columns:.9fr 1.5fr .35fr .55fr;font-size:11px;}
+    .mg-cell{padding:6px 5px;}
+    .mg-bar-pct{min-width:36px;font-size:11px;}
+    .mg-total-pill{padding:2px 7px;font-size:10.5px;}
   }
 </style>
 </head>
@@ -473,12 +489,12 @@
   <!-- ---------- REALISASI PER BULAN (%) ---------- -->
   <section class="card" style="margin-bottom:var(--gap);" aria-label="Realisasi per bulan">
     <p class="sec-label">Realisasi per Bulan — % terhadap Pagu 2026</p>
-    <div class="chart-box" style="height:220px;"><canvas id="chartMonthly" aria-label="Grafik realisasi bulanan dalam persen" role="img"></canvas></div>
+    <div class="chart-box" style="height:150px;"><canvas id="chartMonthly" aria-label="Grafik realisasi bulanan dalam persen" role="img"></canvas></div>
     <div class="monthly-grid" id="monthlyGrid">
       <div class="mg-cell mg-head">Bulan</div>
-      <div class="mg-cell mg-head num">Realisasi Bulanan</div>
-      <div class="mg-cell mg-head" style="text-align:center;">Triwulan</div>
-      <div class="mg-cell mg-head num">Total Triwulan</div>
+      <div class="mg-cell mg-head">Realisasi</div>
+      <div class="mg-cell mg-head" style="justify-content:center;">Triwulan</div>
+      <div class="mg-cell mg-head num">Total TW</div>
     </div>
   </section>
 
@@ -632,6 +648,13 @@ function fmtPct(n){
 }
 function pctClass(n){ if (n < 0.7) return 'red'; if (n < 0.9) return 'amber'; return 'green'; }
 function pctColor(n){ return n < 0.7 ? '#DC6A6A' : n < 0.9 ? '#DDA53B' : '#4FBE8C'; }
+/* Format ringkas untuk sumbu chart Rupiah besar, mis. "Rp 2,0 M" / "Rp 500 Jt". */
+function fmtRpShort(n){
+  const abs = Math.abs(n);
+  if (abs >= 1e9) return 'Rp ' + (n/1e9).toFixed(1).replace('.',',') + ' M';
+  if (abs >= 1e6) return 'Rp ' + Math.round(n/1e6) + ' Jt';
+  return fmtRp(n);
+}
 function escapeHtml(s){
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
@@ -798,7 +821,7 @@ function renderTwChart(rows){
                   callbacks:{ label: c => fmtRp(c.raw) } } },
       scales:{
         y:{ ticks:{ color:'#8C99B0', font:{family:'Inter',size:11},
-                    callback: v => (v/1e6).toFixed(0)+'jt' }, grid:{ color:'#1A2333' }, border:{display:false} },
+                    callback: v => fmtRpShort(v) }, grid:{ color:'#1A2333' }, border:{display:false} },
         x:{ ticks:{ color:'#8C99B0', font:{family:'Inter',size:11.5} }, grid:{display:false}, border:{color:'#243248'} }
       }
     }
@@ -874,32 +897,35 @@ async function loadMonthlyRealisasi(){
 function renderMonthlySection(byMonth){
   const pagu = totalPaguGlobal || 0;
   const pct = byMonth.map(v => pagu > 0 ? v / pagu : 0);
+  const maxPct = Math.max(...pct, 0.01); // skala bar relatif terhadap bulan tertinggi, bukan 100%
 
-  // ---- chart ----
+  // ---- chart: ringkas, tanpa sumbu Y supaya tidak makan tempat ----
   const box = document.getElementById('chartMonthly');
   if (typeof Chart !== 'undefined' && box){
     if (chartMonthly) chartMonthly.destroy();
     chartMonthly = new Chart(box, {
       type:'bar',
       data:{ labels: BULAN_LABEL.map(b => b.slice(0,3)),
-             datasets:[{ data: pct.map(p => p*100), backgroundColor:'#4E8FD8', borderRadius:5, maxBarThickness:38 }] },
+             datasets:[{ data: pct.map(p => p*100),
+                         backgroundColor: pct.map(p => p>0 ? '#4E8FD8' : 'rgba(78,143,216,.18)'),
+                         borderRadius:4, maxBarThickness:30 }] },
       options:{
         responsive:true, maintainAspectRatio:false,
+        layout:{ padding:{ top:4 } },
         plugins:{ legend:{display:false},
-          tooltip:{ backgroundColor:'#1A2435', borderColor:'#243248', borderWidth:1, padding:11,
-                    titleFont:{family:'Inter',weight:'700'}, bodyFont:{family:'Inter'},
+          tooltip:{ backgroundColor:'#1A2435', borderColor:'#243248', borderWidth:1, padding:10,
+                    titleFont:{family:'Inter',weight:'700',size:12}, bodyFont:{family:'Inter',size:12},
                     callbacks:{ title: items => BULAN_LABEL[items[0].dataIndex],
                                 label: c => c.raw.toFixed(1).replace('.',',')+'% dari Pagu' } } },
         scales:{
-          y:{ ticks:{ color:'#8C99B0', font:{family:'Inter',size:10.5}, callback:v=>v+'%' },
-              grid:{ color:'#1A2333' }, border:{display:false} },
+          y:{ display:false, beginAtZero:true },
           x:{ ticks:{ color:'#8C99B0', font:{family:'Inter',size:10.5} }, grid:{display:false}, border:{color:'#243248'} }
         }
       }
     });
   }
 
-  // ---- grid tabel, meniru layout Bulan | Realisasi Bulanan | Triwulan | Total Triwulan ----
+  // ---- grid tabel: Bulan | Realisasi (mini bar + %) | Triwulan | Total TW (pill) ----
   const grid = document.getElementById('monthlyGrid');
   while (grid.children.length > 4) grid.removeChild(grid.lastChild); // sisakan 4 sel header
 
@@ -914,11 +940,28 @@ function renderMonthlySection(byMonth){
     const groupTotalPct = g.idx.reduce((a,i) => a + pct[i], 0);
     g.idx.forEach((mi, j) => {
       const band = 'mg-band-' + (gi % 2);
-      const bCell = document.createElement('div'); bCell.className = 'mg-cell ' + band; bCell.textContent = BULAN_LABEL[mi];
-      const vCell = document.createElement('div'); vCell.className = 'mg-cell num ' + band; vCell.textContent = fmtPct(pct[mi]);
-      const tCell = document.createElement('div'); tCell.className = 'mg-cell mg-tw ' + band; tCell.textContent = j===1 ? g.label : '';
-      const totCell = document.createElement('div'); totCell.className = 'mg-cell mg-total ' + band;
-      totCell.textContent = j===1 ? fmtPct(groupTotalPct) : '';
+      const p = pct[mi];
+      const isZero = p <= 0;
+      const width = Math.max(isZero ? 0 : 4, Math.min(100, (p / maxPct) * 100));
+
+      const bCell = document.createElement('div');
+      bCell.className = 'mg-cell ' + band; bCell.textContent = BULAN_LABEL[mi];
+
+      const vCell = document.createElement('div');
+      vCell.className = 'mg-cell ' + band;
+      vCell.innerHTML = `<div class="mg-bar${isZero ? ' zero' : ''}">
+        <div class="mg-bar-track"><div class="mg-bar-fill" style="width:${width}%;"></div></div>
+        <span class="mg-bar-pct">${fmtPct(p)}</span>
+      </div>`;
+
+      const tCell = document.createElement('div');
+      tCell.className = 'mg-cell mg-tw-cell ' + band;
+      tCell.innerHTML = j===1 ? `<span class="mg-tw-label">${g.label}</span>` : '';
+
+      const totCell = document.createElement('div');
+      totCell.className = 'mg-cell num ' + band;
+      totCell.innerHTML = j===1 ? `<span class="mg-total-pill">${fmtPct(groupTotalPct)}</span>` : '';
+
       grid.appendChild(bCell); grid.appendChild(vCell); grid.appendChild(tCell); grid.appendChild(totCell);
     });
   });
